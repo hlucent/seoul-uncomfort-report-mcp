@@ -29,7 +29,32 @@
 
 ---
 
-## (다음 항목 — Claude Code가 작업 시작 시 추가)
+## 2026-08-20 — 구현 및 로컬 실측 테스트 (Claude Code)
 
-- [ ] 로컬 실측 테스트 결과
+- `requirements.txt`, `seoul_api.py`, `server.py`, `Dockerfile`, `fly.toml` 작성 완료.
+- DEVPLAN.md 2절 "실측 필요 항목" 5가지 전부 확인 완료 (`.env`에 이미 유효한 키가 있어
+  즉시 실측 진행):
+  1. **인증키 위치**: 경로 세그먼트 방식(`/{KEY}/json/{SERVICE}/{START}/{END}/...`)이
+     첫 시도에 즉시 성공(`INFO-000`). 쿼리 파라미터 방식은 시도하지 않음.
+  2. **YEAR/MONTH 부분 채움**: 전부 생략(`SmartUncomfStatSector`가 167건 반환),
+     YEAR만 지정(6건 반환), YEAR+MONTH 모두 지정(1건 반환) 모두 정상 동작 확인.
+     `SmartUncomfStatMonth`는 MONTH 세그먼트를 아예 붙이지 않고 YEAR까지만 붙여 정상 동작.
+  3. **JSON 스키마**: `TYPE=json` 요청 시 최상위 키가 서비스명이고 그 아래
+     `list_total_count`/`RESULT`/`row` 구조로, 명세서 XML 구조와 필드명이 동일함을 확인.
+  4. **키 공유 여부**: 3개 서비스 모두 하나의 `SEOUL_API_KEY`로 정상 응답(`INFO-000`) —
+     서비스별 개별 활용신청 불필요한 것으로 확인.
+  5. **빈 태그 필드**: 지나지 않은 달(예: 2026-08 시점 기준 `MON_08`~`MON_12`)이 JSON에서
+     빈 문자열/null이 아니라 **`0.0`(실수)**으로 옴을 실측 확인. `_safe_int()`로 정수 변환.
+  - 추가 발견: 모든 숫자 필드가 JSON에서 정수가 아니라 실수(`55567.0`)로 내려옴 —
+    `_safe_int()`가 `float()` 경유 변환으로 처리.
+- `server.py` FastMCP 스모크 테스트: `initialize` 요청 정상 응답, `tools/list`로 3개 툴
+  (`get_uncomfort_report_by_sector`, `get_uncomfort_report_by_district`,
+  `get_uncomfort_report_by_month`) 노출 확인.
+- Rate limit 미들웨어 동작 확인: 동일 IP로 4회 연속 요청 시 1회 성공(200) 이후
+  3회 연속 429 반환 — 분당 3회 제한 정상 동작.
+- `stateless_http=True` 적용 및 `Fly-Client-IP` 우선 IP 추출, OPTIONS 제외 로직 반영.
+
+## (다음 항목 — 사용자가 fly.io 배포 시 확인)
+
+- [x] 로컬 실측 테스트 결과 — 위 항목 참고
 - [ ] 배포 결과 및 커넥터 연결 확인
